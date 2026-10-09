@@ -1,10 +1,16 @@
 // agenda.js
 // Marco 1 - Lógica básica de agenda para barbearia (interface via terminal)
-// Evolução: suporte a múltiplos dias. Cada data tem sua própria lista de
-// horários e disponibilidades, independentes entre si.
+// Evolução: persistência em arquivo JSON (agenda.json), validação de data
+// no formato DD/MM/AAAA, nome do cliente obrigatório, horário no formato HH:MM
+// e comando "volte" para desistir de uma operação e voltar ao menu.
 
+const fs = require("fs");
+const path = require("path");
 const readline = require("readline/promises");
 const { stdin: input, stdout: output } = require("process");
+
+// Caminho do arquivo onde a agenda será gravada (na mesma pasta do agenda.js)
+const ARQUIVO_AGENDA = path.join(__dirname, "agenda.json");
 
 // Lista padrão de horários que existem em qualquer dia
 const HORARIOS_PADRAO = [
@@ -18,14 +24,38 @@ const HORARIOS_PADRAO = [
   "17:00",
 ];
 
+// Lê a agenda do arquivo JSON. Se o arquivo ainda não existe (primeira
+// execução), começa com uma agenda vazia. Se o arquivo existir mas estiver
+// com defeito, o programa para, para não apagar dados por engano.
+function carregarAgenda() {
+  if (!fs.existsSync(ARQUIVO_AGENDA)) {
+    return {};
+  }
+
+  try {
+    const conteudo = fs.readFileSync(ARQUIVO_AGENDA, "utf-8");
+    return JSON.parse(conteudo);
+  } catch (erro) {
+    console.log("Erro ao ler o arquivo agenda.json. Ele pode estar corrompido.");
+    console.log("Corrija o arquivo ou apague-o para começar uma agenda nova.");
+    console.log(`Detalhe do erro: ${erro.message}`);
+    process.exit(1);
+  }
+}
+
+// Grava a agenda inteira no arquivo JSON
+function salvarAgenda(agenda) {
+  try {
+    fs.writeFileSync(ARQUIVO_AGENDA, JSON.stringify(agenda, null, 2), "utf-8");
+  } catch (erro) {
+    console.log(`Atenção: não foi possível salvar a agenda no arquivo. ${erro.message}`);
+  }
+}
+
 // Estrutura de dados: um objeto onde cada chave é uma data (ex: "26/09/2026")
 // e o valor é o array de horários daquele dia específico.
-// Exemplo depois de uso:
-// {
-//   "26/09/2026": [ { horario: "09:00", cliente: null, disponivel: true }, ... ],
-//   "27/09/2026": [ { horario: "09:00", cliente: "João", disponivel: false }, ... ]
-// }
-const agenda = {};
+// Ao iniciar, carrega do arquivo o que já foi agendado antes.
+const agenda = carregarAgenda();
 
 // Retorna o array de horários de uma data. Se a data ainda não existe na
 // agenda, cria os horários padrão (todos disponíveis) para ela na hora.
@@ -70,39 +100,60 @@ function buscarHorario(horariosDoDia, horarioDesejado) {
   return horariosDoDia.find((item) => item.horario === horarioDesejado);
 }
 
-// Tenta realizar o agendamento em um dia específico e retorna uma mensagem de resultado
+// Tenta realizar o agendamento em um dia específico.
+// Retorna um objeto { sucesso, mensagem } para o programa saber se
+// houve mudança na agenda (e, portanto, se precisa salvar o arquivo).
 function agendarHorario(horariosDoDia, horarioDesejado, nomeCliente) {
   const item = buscarHorario(horariosDoDia, horarioDesejado);
 
   if (!item) {
-    return `O horário ${horarioDesejado} não existe na agenda.`;
+    return {
+      sucesso: false,
+      mensagem: `O horário ${horarioDesejado} não existe na agenda.`,
+    };
   }
 
   if (!item.disponivel) {
-    return `O horário ${horarioDesejado} já está ocupado nesse dia. Por favor, escolha outro horário.`;
+    return {
+      sucesso: false,
+      mensagem: `O horário ${horarioDesejado} já está ocupado nesse dia. Por favor, escolha outro horário.`,
+    };
   }
 
   item.disponivel = false;
   item.cliente = nomeCliente;
-  return `Agendamento realizado com sucesso! ${nomeCliente} às ${horarioDesejado}.`;
+  return {
+    sucesso: true,
+    mensagem: `Agendamento realizado com sucesso! ${nomeCliente} às ${horarioDesejado}.`,
+  };
 }
 
-// Tenta cancelar um agendamento existente em um dia específico
+// Tenta cancelar um agendamento existente em um dia específico.
+// Também retorna { sucesso, mensagem }.
 function cancelarHorario(horariosDoDia, horarioDesejado) {
   const item = buscarHorario(horariosDoDia, horarioDesejado);
 
   if (!item) {
-    return `O horário ${horarioDesejado} não existe na agenda.`;
+    return {
+      sucesso: false,
+      mensagem: `O horário ${horarioDesejado} não existe na agenda.`,
+    };
   }
 
   if (item.disponivel) {
-    return `O horário ${horarioDesejado} já está livre nesse dia, não há agendamento para cancelar.`;
+    return {
+      sucesso: false,
+      mensagem: `O horário ${horarioDesejado} já está livre nesse dia, não há agendamento para cancelar.`,
+    };
   }
 
   const nomeAnterior = item.cliente;
   item.disponivel = true;
   item.cliente = null;
-  return `Agendamento de ${nomeAnterior} às ${horarioDesejado} foi cancelado. O horário está livre novamente.`;
+  return {
+    sucesso: true,
+    mensagem: `Agendamento de ${nomeAnterior} às ${horarioDesejado} foi cancelado. O horário está livre novamente.`,
+  };
 }
 
 // Percorre todas as datas cadastradas na agenda e lista apenas os horários
@@ -142,15 +193,162 @@ async function mostrarMenu(rl) {
   return opcao.trim();
 }
 
-// Pergunta a data que o usuário quer usar (agendar, cancelar ou visualizar)
+// Verifica se o texto é uma data válida no formato DD/MM/AAAA.
+// Exige o formato exato (2 dígitos para dia e mês, 4 para o ano) e também
+// confere se a data existe de verdade (ex: 31/02/2026 não existe).
+function validarData(texto) {
+  const formato = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const partes = texto.match(formato);
+
+  if (!partes) {
+    return false;
+  }
+
+  const dia = Number(partes[1]);
+  const mes = Number(partes[2]);
+  const ano = Number(partes[3]);
+
+  // O JavaScript "corrige" datas impossíveis (31/02 vira 03/03).
+  // Por isso criamos a data e conferimos se dia, mês e ano continuam iguais.
+  const data = new Date(ano, mes - 1, dia);
+
+  return (
+    data.getFullYear() === ano &&
+    data.getMonth() === mes - 1 &&
+    data.getDate() === dia
+  );
+}
+
+// Palavra que o usuário pode digitar, em qualquer pergunta, para desistir da
+// operação atual e voltar ao menu principal.
+const PALAVRA_VOLTAR = "volte";
+const DICA_VOLTAR = `(digite "${PALAVRA_VOLTAR}" para cancelar)`;
+
+// Verifica se o texto digitado é o comando de voltar (ignora maiúsculas,
+// minúsculas e espaços extras: "volte", "VOLTE", " Volte " funcionam).
+function ehComandoVoltar(texto) {
+  return texto.trim().toLowerCase() === PALAVRA_VOLTAR;
+}
+
+// Avisa que a operação foi cancelada. Os fluxos chamam esta função quando
+// uma pergunta devolve null (ou seja, o usuário digitou "volte").
+function avisarVoltaAoMenu() {
+  console.log("\nOperação cancelada. Voltando ao menu.");
+}
+
+// Pergunta a data que o usuário quer usar (agendar, cancelar ou visualizar).
+// Repete a pergunta até o usuário digitar uma data válida.
+// Devolve null se o usuário digitar "volte".
 async function perguntarData(rl) {
-  const data = await rl.question("Informe a data (ex: 26/09/2026): ");
-  return data.trim();
+  while (true) {
+    const resposta = await rl.question(
+      `Informe a data (ex: 26/09/2026) ${DICA_VOLTAR}: `
+    );
+
+    if (ehComandoVoltar(resposta)) {
+      return null;
+    }
+
+    const data = resposta.trim();
+
+    if (validarData(data)) {
+      return data;
+    }
+
+    console.log("Data inválida. Digite uma data válida.\n");
+  }
+}
+
+// Pergunta o nome do cliente e repete até receber um nome preenchido.
+// - Recusa Enter sem digitar nada e entradas só com espaços (ex: "   ").
+// - Aceita nomes com espaços no meio (ex: "Ana Paula", "João da Silva").
+// - Remove espaços do começo/fim e junta espaços repetidos em um só.
+// Devolve null se o usuário digitar "volte".
+async function perguntarNome(rl) {
+  while (true) {
+    const resposta = await rl.question(
+      `Qual o nome do cliente? ${DICA_VOLTAR}: `
+    );
+
+    if (ehComandoVoltar(resposta)) {
+      return null;
+    }
+
+    const nome = resposta.trim().replace(/\s+/g, " ");
+
+    if (nome !== "") {
+      return nome;
+    }
+
+    console.log("Nome inválido. Digite o nome do cliente.\n");
+  }
+}
+
+// Verifica se o texto está no formato HH:MM (sempre 2 dígitos, dois pontos,
+// 2 dígitos). Ex: "09:00" é aceito; "9:00", "9h" e "0900" não são.
+function validarFormatoHorario(texto) {
+  return /^\d{2}:\d{2}$/.test(texto);
+}
+
+// Pergunta um horário e repete até ele estar no formato HH:MM.
+// "pergunta" é o texto exibido ao usuário (muda entre agendar e cancelar).
+// Devolve null se o usuário digitar "volte".
+async function perguntarHorarioFormatado(rl, pergunta) {
+  while (true) {
+    const resposta = await rl.question(`${pergunta} ${DICA_VOLTAR}: `);
+
+    if (ehComandoVoltar(resposta)) {
+      return null;
+    }
+
+    const horario = resposta.trim();
+
+    if (validarFormatoHorario(horario)) {
+      return horario;
+    }
+
+    console.log("Horário inválido. Digite no formato HH:MM (ex: 09:00).\n");
+  }
+}
+
+// Pergunta o horário para um novo agendamento e repete até o usuário
+// informar um horário que existe na agenda E está livre naquele dia.
+// Assim, o nome do cliente só é pedido depois de um horário válido.
+// Devolve null se o usuário digitar "volte".
+async function perguntarHorarioParaAgendar(rl, horariosDoDia) {
+  while (true) {
+    const horario = await perguntarHorarioFormatado(
+      rl,
+      "\nQual horário deseja agendar? (ex: 09:00)"
+    );
+
+    if (horario === null) {
+      return null;
+    }
+
+    const item = buscarHorario(horariosDoDia, horario);
+
+    if (!item) {
+      console.log(
+        `O horário ${horario} não existe na agenda. Escolha um dos horários listados.`
+      );
+    } else if (!item.disponivel) {
+      console.log(
+        `O horário ${horario} já está ocupado nesse dia. Escolha outro horário.`
+      );
+    } else {
+      return horario;
+    }
+  }
 }
 
 // Fluxo de visualizar a agenda de um dia específico
 async function fluxoVisualizar(rl, agenda) {
   const data = await perguntarData(rl);
+  if (data === null) {
+    return avisarVoltaAoMenu();
+  }
+
   const horariosDoDia = obterHorariosDoDia(agenda, data);
   mostrarAgendaDoDia(data, horariosDoDia);
 }
@@ -158,36 +356,65 @@ async function fluxoVisualizar(rl, agenda) {
 // Fluxo de agendar um novo cliente em um dia específico
 async function fluxoAgendar(rl, agenda) {
   const data = await perguntarData(rl);
+  if (data === null) {
+    return avisarVoltaAoMenu();
+  }
+
   const horariosDoDia = obterHorariosDoDia(agenda, data);
 
   mostrarHorariosDisponiveis(data, horariosDoDia);
 
-  const horarioDesejado = await rl.question(
-    "\nQual horário deseja agendar? (ex: 09:00) "
-  );
-  const nomeCliente = await rl.question("Qual o nome do cliente? ");
+  // Se o dia está lotado, não há o que perguntar: volta ao menu
+  const temHorarioLivre = horariosDoDia.some((item) => item.disponivel);
+  if (!temHorarioLivre) {
+    return;
+  }
 
-  const resultado = agendarHorario(
-    horariosDoDia,
-    horarioDesejado.trim(),
-    nomeCliente.trim()
-  );
-  console.log(`\n${resultado}`);
+  const horarioDesejado = await perguntarHorarioParaAgendar(rl, horariosDoDia);
+  if (horarioDesejado === null) {
+    return avisarVoltaAoMenu();
+  }
+
+  const nomeCliente = await perguntarNome(rl);
+  if (nomeCliente === null) {
+    return avisarVoltaAoMenu();
+  }
+
+  const resultado = agendarHorario(horariosDoDia, horarioDesejado, nomeCliente);
+  console.log(`\n${resultado.mensagem}`);
+
+  // Só grava no arquivo se o agendamento realmente aconteceu
+  if (resultado.sucesso) {
+    salvarAgenda(agenda);
+  }
 }
 
 // Fluxo de cancelar um agendamento existente em um dia específico
 async function fluxoCancelar(rl, agenda) {
   const data = await perguntarData(rl);
+  if (data === null) {
+    return avisarVoltaAoMenu();
+  }
+
   const horariosDoDia = obterHorariosDoDia(agenda, data);
 
   mostrarAgendaDoDia(data, horariosDoDia);
 
-  const horarioDesejado = await rl.question(
-    "Qual horário deseja cancelar? (ex: 09:00) "
+  const horarioDesejado = await perguntarHorarioFormatado(
+    rl,
+    "Qual horário deseja cancelar? (ex: 09:00)"
   );
+  if (horarioDesejado === null) {
+    return avisarVoltaAoMenu();
+  }
 
-  const resultado = cancelarHorario(horariosDoDia, horarioDesejado.trim());
-  console.log(`\n${resultado}`);
+  const resultado = cancelarHorario(horariosDoDia, horarioDesejado);
+  console.log(`\n${resultado.mensagem}`);
+
+  // Só grava no arquivo se o cancelamento realmente aconteceu
+  if (resultado.sucesso) {
+    salvarAgenda(agenda);
+  }
 }
 
 // Função principal: exibe o menu em loop até o usuário escolher sair
