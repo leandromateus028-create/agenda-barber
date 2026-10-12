@@ -1,0 +1,44 @@
+{
+  "10/10/2026": [
+    {
+      "horario": "09:00",
+      "cliente": "Leandro",
+      "disponivel": false
+    },
+    {
+      "horario": "10:00",
+      "cliente": null,
+      "disponivel": true
+    },
+    {
+      "horario": "11:00",
+      "cliente": null,
+      "disponivel": true
+    },
+    {
+      "horario": "13:00",
+      "cliente": null,
+      "disponivel": true
+    },
+    {
+      "horario": "14:00",
+      "cliente": null,
+      "disponivel": true
+    },
+    {
+      "horario": "15:00",
+      "cliente": null,
+      "disponivel": true
+    },
+    {
+      "horario": "16:00",
+      "cliente": null,
+      "disponivel": true
+    },
+    {
+      "horario": "17:00",
+      "cliente": null,
+      "disponivel": true
+    }
+  ]
+}
