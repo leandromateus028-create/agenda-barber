@@ -1,15 +1,18 @@
 // src/api.js
-// A API web da agenda: recebe requisições HTTP e responde em JSON.
-// Usa as MESMAS regras do terminal (regrasAgenda.js, validacoes.js e
+// O servidor web da agenda. Recebe requisições HTTP e decide:
+//   - endereços que começam com /api  -> responde em JSON (a API da agenda)
+//   - qualquer outro endereço         -> entrega a página do site (pasta public)
+//
+// A API usa as MESMAS regras do terminal (regrasAgenda.js, validacoes.js e
 // armazenamento.js). Aqui só existe a "tradução" entre HTTP e essas regras.
 //
-// Rotas:
-//   GET    /                        -> lista das rotas disponíveis
-//   GET    /horarios?data=...       -> todos os horários de um dia, com status
-//   GET    /horarios/disponiveis?data=...  -> só os horários livres de um dia
-//   GET    /agendamentos            -> todos os agendamentos de todas as datas
-//   POST   /agendamentos            -> cria um agendamento (corpo em JSON)
-//   DELETE /agendamentos?data=...&horario=...  -> cancela um agendamento
+// Rotas da API:
+//   GET    /api                        -> lista das rotas disponíveis
+//   GET    /api/horarios?data=...      -> todos os horários de um dia, com status
+//   GET    /api/horarios/disponiveis?data=...  -> só os horários livres de um dia
+//   GET    /api/agendamentos           -> todos os agendamentos de todas as datas
+//   POST   /api/agendamentos           -> cria um agendamento (corpo em JSON)
+//   DELETE /api/agendamentos?data=...&horario=...  -> cancela um agendamento
 //
 // Códigos de status usados:
 //   200 OK | 201 Criado | 400 Dados inválidos | 404 Não encontrado
@@ -19,6 +22,7 @@
 const http = require("http");
 
 const { salvarAgenda } = require("./armazenamento");
+const { servirArquivoEstatico } = require("./estaticos");
 const {
   validarData,
   validarFormatoHorario,
@@ -38,6 +42,9 @@ const {
 const TAMANHO_MAXIMO_CORPO = 10 * 1024; // 10 KB
 const TAMANHO_MAXIMO_NOME = 100; // caracteres
 
+// Todos os endereços da API começam com este prefixo
+const PREFIXO_API = "/api";
+
 const MENSAGEM_DATA_INVALIDA =
   "Data inválida. Informe uma data válida no formato DD/MM/AAAA " +
   "no parâmetro 'data' (ex: ?data=26/09/2026).";
@@ -50,6 +57,9 @@ const MENSAGEM_DATA_INVALIDA =
 function responder(res, status, corpo, cabecalhosExtras = {}) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
+    // A disponibilidade muda a todo momento: o navegador não deve guardar cópia
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
     ...cabecalhosExtras,
   });
   res.end(JSON.stringify(corpo, null, 2));
@@ -139,11 +149,11 @@ function tratarInicio({ res }) {
   responder(res, 200, {
     mensagem: "API da agenda da barbearia",
     rotas: [
-      "GET /horarios?data=26/09/2026",
-      "GET /horarios/disponiveis?data=26/09/2026",
-      "GET /agendamentos",
-      'POST /agendamentos  (corpo JSON: {"data","horario","cliente"})',
-      "DELETE /agendamentos?data=26/09/2026&horario=09:00",
+      "GET /api/horarios?data=26/09/2026",
+      "GET /api/horarios/disponiveis?data=26/09/2026",
+      "GET /api/agendamentos",
+      'POST /api/agendamentos  (corpo JSON: {"data","horario","cliente"})',
+      "DELETE /api/agendamentos?data=26/09/2026&horario=09:00",
     ],
   });
 }
@@ -308,14 +318,35 @@ const rotas = {
   },
 };
 
-// Descobre qual função deve tratar a requisição e a executa
+// Descobre quem deve tratar a requisição (a API ou a página) e a executa
 async function tratarRequisicao(req, res, agenda) {
-  const url = new URL(req.url, "http://localhost");
+  let url;
+  try {
+    url = new URL(req.url, "http://localhost");
+  } catch (erro) {
+    return responder(res, 400, { erro: "Endereço inválido." });
+  }
+
+  let caminho = url.pathname;
+
+  // Endereço que não é da API: é a página (HTML, CSS, JavaScript)
+  const ehRotaDaApi =
+    caminho === PREFIXO_API || caminho.startsWith(PREFIXO_API + "/");
+
+  if (!ehRotaDaApi) {
+    return servirArquivoEstatico(req, res, caminho);
+  }
+
+  // Tira o prefixo: "/api/agendamentos" vira "/agendamentos" na tabela de rotas
+  caminho = caminho.slice(PREFIXO_API.length);
 
   // Aceita "/agendamentos/" do mesmo jeito que "/agendamentos"
-  let caminho = url.pathname;
   if (caminho.length > 1 && caminho.endsWith("/")) {
     caminho = caminho.slice(0, -1);
+  }
+
+  if (caminho === "") {
+    caminho = "/";
   }
 
   if (!Object.hasOwn(rotas, caminho)) {

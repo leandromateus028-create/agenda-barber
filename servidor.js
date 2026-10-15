@@ -1,6 +1,7 @@
 // servidor.js
-// Ponto de entrada da API web do sistema de agendamento da barbearia.
+// Ponto de entrada do site e da API web do sistema de agendamento da barbearia.
 // Para executar:  node servidor.js
+// Depois, abra no navegador o endereço da porta (ex: http://localhost:3000/).
 //
 // ATENÇÃO: não rode o servidor e o terminal (node index.js) ao mesmo tempo.
 // Os dois guardam a agenda na memória e gravam no mesmo agenda.json, então
@@ -9,7 +10,11 @@
 // Organização do projeto:
 //   index.js                 -> versão de terminal (Marco 1)
 //   servidor.js              -> este arquivo: carrega a agenda e liga o servidor
-//   src/api.js               -> rotas da API web (Marco 2)
+//   src/api.js               -> rotas da API web (Marco 2) e divisão API x página
+//   src/estaticos.js         -> entrega os arquivos da pasta public
+//   public/index.html        -> página de agendamento do cliente
+//   public/estilo.css        -> aparência da página
+//   public/app.js            -> comportamento da página (escolher dia, horário...)
 //   src/armazenamento.js     -> ler/gravar o arquivo agenda.json
 //   src/regrasAgenda.js      -> regras da agenda (agendar, cancelar, listar...)
 //   src/validacoes.js        -> validação de data, horário e nome
@@ -49,7 +54,8 @@ function main() {
 
   servidor.listen(PORTA, () => {
     console.log(`Servidor da agenda rodando na porta ${PORTA}.`);
-    console.log(`Teste em: http://localhost:${PORTA}/`);
+    console.log(`Página do cliente: http://localhost:${PORTA}/`);
+    console.log(`API (JSON):        http://localhost:${PORTA}/api`);
     console.log("Pressione Ctrl+C para parar.");
   });
 }

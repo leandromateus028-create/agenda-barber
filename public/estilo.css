@@ -1,0 +1,320 @@
+/* public/estilo.css
+   Aparência da página de agendamento.
+   Ideia: azulejo claro de barbearia, tinta azul-marinho e o vermelho do poste
+   de barbeiro. A faixa listrada é o único enfeite; o resto é discreto. */
+
+/* ---------- Cores e medidas (mude aqui para mudar o visual todo) ---------- */
+:root {
+  --fundo: #edf0f3;
+  --superficie: #ffffff;
+  --tinta: #17212d;
+  --tinta-suave: #455261;
+  --linha: #c5cdd6;            /* divisórias discretas */
+  --borda-controle: #6f7c8a;   /* bordas de botões e campos (contraste 3:1) */
+  --destaque: #16324f;         /* item selecionado e botão principal */
+  --sobre-destaque: #ffffff;
+  --foco: #1f5fae;
+  --erro: #a3211f;
+  --poste-vermelho: #b3282d;
+  --poste-azul: #1f4e8c;
+  --poste-branco: #ffffff;
+
+  --raio: 0.5rem;
+  --fonte: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #0f161e;
+    --superficie: #17202b;
+    --tinta: #e9eef3;
+    --tinta-suave: #a9b6c3;
+    --linha: #2e3a48;
+    --borda-controle: #7d8b99;
+    --destaque: #e9eef3;
+    --sobre-destaque: #0f161e;
+    --foco: #8cc2ff;
+    --erro: #ff9b97;
+  }
+}
+
+/* ---------- Base ---------- */
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--tinta);
+  font-family: var(--fonte);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+/* Faixa do poste de barbeiro */
+.faixa {
+  height: 0.5rem;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--poste-vermelho) 0 0.75rem,
+    var(--poste-branco) 0.75rem 1.5rem,
+    var(--poste-azul) 1.5rem 2.25rem,
+    var(--poste-branco) 2.25rem 3rem
+  );
+}
+
+.pagina {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1.75rem 1rem 4rem;
+}
+
+/* ---------- Texto ---------- */
+.cabecalho {
+  margin-bottom: 1.5rem;
+}
+
+h1 {
+  font-size: clamp(1.9rem, 7vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 0.75rem;
+}
+
+.texto-suave {
+  color: var(--tinta-suave);
+}
+
+.cabecalho p {
+  color: var(--tinta-suave);
+  max-width: 32rem;
+}
+
+.erro {
+  color: var(--erro);
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+/* ---------- Seções (separadas por uma linha, sem cartões) ---------- */
+.secao {
+  border-top: 1px solid var(--linha);
+  padding: 1.25rem 0 0.5rem;
+  margin-top: 1rem;
+}
+
+#dia-escolhido,
+#estado-horarios,
+.resumo {
+  margin-bottom: 0.75rem;
+}
+
+#estado-horarios:empty {
+  display: none;
+}
+
+.resumo {
+  font-weight: 600;
+}
+
+/* ---------- Botões de dia e de horário ---------- */
+.grade-dias {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.375rem;
+}
+
+.grade-horarios {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.dia,
+.horario {
+  font: inherit;
+  color: var(--tinta);
+  background: var(--superficie);
+  border: 1px solid var(--borda-controle);
+  border-radius: var(--raio);
+  cursor: pointer;
+}
+
+.dia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  min-height: 4.25rem;
+  padding: 0.35rem 0;
+  line-height: 1.15;
+}
+
+.dia-semana,
+.dia-mes {
+  font-size: 0.75rem;
+  color: var(--tinta-suave);
+}
+
+.dia-numero {
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.horario {
+  min-height: 3rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Item selecionado: cores invertidas */
+.dia[aria-pressed="true"],
+.horario[aria-pressed="true"] {
+  background: var(--destaque);
+  border-color: var(--destaque);
+  color: var(--sobre-destaque);
+}
+
+.dia[aria-pressed="true"] .dia-semana,
+.dia[aria-pressed="true"] .dia-mes {
+  color: var(--sobre-destaque);
+}
+
+@media (hover: hover) {
+  .dia:hover:not([aria-pressed="true"]),
+  .horario:hover:not([aria-pressed="true"]) {
+    border-color: var(--destaque);
+  }
+}
+
+/* ---------- Formulário ---------- */
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.375rem;
+}
+
+input[type="text"] {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;               /* 1rem: evita o zoom automático no iPhone */
+  color: var(--tinta);
+  background: var(--superficie);
+  border: 1px solid var(--borda-controle);
+  border-radius: var(--raio);
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--erro);
+  border-width: 2px;
+}
+
+.botao {
+  display: block;
+  width: 100%;
+  min-height: 3rem;
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  color: var(--sobre-destaque);
+  background: var(--destaque);
+  border: 1px solid var(--destaque);
+  border-radius: var(--raio);
+  cursor: pointer;
+}
+
+.botao:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.botao-secundario {
+  color: var(--tinta);
+  background: transparent;
+  border-color: var(--borda-controle);
+}
+
+/* ---------- Foco visível para quem usa o teclado ---------- */
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--foco);
+  outline-offset: 2px;
+}
+
+/* O título da confirmação recebe foco por programa (para leitores de tela
+   anunciarem o resultado), mas não é um controle: sem contorno. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* ---------- Confirmação ---------- */
+.confirmacao {
+  margin-top: 1.5rem;
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  overflow: hidden;
+}
+
+.faixa-confirmacao {
+  height: 0.5rem;
+}
+
+.confirmacao-corpo {
+  padding: 1.25rem 1rem 1.5rem;
+}
+
+.confirmacao h2 {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+
+/* ---------- Telas maiores ---------- */
+@media (min-width: 40rem) {
+  .pagina {
+    padding-top: 3rem;
+  }
+
+  .grade-dias {
+    gap: 0.5rem;
+  }
+
+  .botao {
+    width: auto;
+    min-width: 15rem;
+  }
+}
+
+/* ---------- Movimento reduzido ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .dia,
+  .horario,
+  .botao {
+    transition: background-color 120ms, border-color 120ms, color 120ms;
+  }
+}

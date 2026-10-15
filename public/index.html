@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Agende seu horário</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+  <!-- Faixa decorativa inspirada no poste de barbeiro -->
+  <div class="faixa" aria-hidden="true"></div>
+
+  <main class="pagina">
+    <header class="cabecalho">
+      <h1>Agende seu horário</h1>
+      <p id="instrucao">Escolha o dia e o horário, depois confirme com seu nome.</p>
+    </header>
+
+    <noscript>
+      <p class="erro">Ative o JavaScript no navegador para agendar por esta página.</p>
+    </noscript>
+
+    <!-- Passo: escolher o dia -->
+    <section id="secao-dia" class="secao" aria-labelledby="titulo-dia">
+      <h2 id="titulo-dia">Escolha o dia</h2>
+      <div id="lista-dias" class="grade-dias" role="group" aria-labelledby="titulo-dia"></div>
+    </section>
+
+    <!-- Passo: escolher o horário (aparece depois de escolher o dia) -->
+    <section id="secao-horarios" class="secao" aria-labelledby="titulo-horarios" hidden>
+      <h2 id="titulo-horarios">Escolha o horário</h2>
+      <p id="dia-escolhido" class="texto-suave"></p>
+      <p id="alerta-horarios" class="erro" role="alert" hidden></p>
+      <p id="estado-horarios" class="texto-suave" role="status"></p>
+      <div id="lista-horarios" class="grade-horarios" role="group" aria-labelledby="titulo-horarios"></div>
+    </section>
+
+    <!-- Passo: informar o nome (aparece depois de escolher o horário) -->
+    <section id="secao-formulario" class="secao" aria-labelledby="titulo-formulario" hidden>
+      <h2 id="titulo-formulario">Seu nome</h2>
+      <p id="resumo-escolha" class="resumo"></p>
+      <form id="formulario" novalidate>
+        <label for="campo-nome">Nome completo</label>
+        <input id="campo-nome" name="nome" type="text" maxlength="100"
+               autocomplete="name" aria-describedby="erro-formulario">
+        <p id="erro-formulario" class="erro" role="alert" hidden></p>
+        <button id="botao-confirmar" type="submit" class="botao">Confirmar agendamento</button>
+      </form>
+    </section>
+
+    <!-- Resultado: agendamento confirmado -->
+    <section id="secao-confirmacao" class="confirmacao" aria-labelledby="titulo-confirmacao" hidden>
+      <div class="faixa faixa-confirmacao" aria-hidden="true"></div>
+      <div class="confirmacao-corpo">
+        <h2 id="titulo-confirmacao" tabindex="-1">Agendamento confirmado</h2>
+        <p id="texto-confirmacao"></p>
+        <button id="botao-novo" type="button" class="botao botao-secundario">Fazer outro agendamento</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
