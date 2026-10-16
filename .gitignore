@@ -1,0 +1,8 @@
+# Dados dos clientes (nomes e horários): não devem ir para o GitHub
+agenda.json
+
+# Segredos e configurações locais
+.env
+
+# Dependências (para quando o projeto passar a usar pacotes npm)
+node_modules/

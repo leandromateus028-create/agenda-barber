@@ -98,13 +98,6 @@ function descreverDia(dia) {
   return `${DIAS_SEMANA_LONGO[dia.diaDaSemana]}, ${dia.numero} de ${MESES_LONGO[dia.mes]}`;
 }
 
-// Diz se um horário "HH:MM" de hoje já passou (ou é agora)
-function horarioJaPassou(horario) {
-  const agora = new Date();
-  const [horas, minutos] = horario.split(":").map(Number);
-  return horas * 60 + minutos <= agora.getHours() * 60 + agora.getMinutes();
-}
-
 // ---------------------------------------------------------------------------
 // Conversa com a API
 // ---------------------------------------------------------------------------
@@ -265,12 +258,9 @@ async function carregarHorarios() {
     return;
   }
 
-  let horarios = resultado.dados.horarios;
-
-  // Hoje: não faz sentido oferecer um horário que já passou
-  if (dia.ehHoje) {
-    horarios = horarios.filter((horario) => !horarioJaPassou(horario));
-  }
+  // O servidor já entrega só os horários que ainda podem ser agendados
+  // (ele sabe a hora certa em São Paulo e quais horários já passaram).
+  const horarios = resultado.dados.horarios;
 
   if (horarios.length === 0) {
     estadoHorarios.textContent = "Não há horários livres neste dia. Escolha outro dia.";
@@ -333,11 +323,12 @@ async function enviarAgendamento(evento) {
     return;
   }
 
-  // 409: alguém ocupou este horário antes. Atualiza a lista de horários.
+  // 409: o horário não está mais disponível (alguém ocupou antes, ou a hora
+  // dele já passou). Mostra o motivo e atualiza a lista de horários.
   if (resultado.status === 409) {
     esconderFormulario();
     await carregarHorarios();
-    mostrarAlertaDeHorarios("Esse horário acabou de ser ocupado. Escolha outro horário.");
+    mostrarAlertaDeHorarios(mensagemDeErro(resultado));
     return;
   }
 

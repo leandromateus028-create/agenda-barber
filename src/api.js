@@ -7,22 +7,36 @@
 // armazenamento.js). Aqui só existe a "tradução" entre HTTP e essas regras.
 //
 // Rotas da API:
+//   Públicas (usadas pela página do cliente):
 //   GET    /api                        -> lista das rotas disponíveis
-//   GET    /api/horarios?data=...      -> todos os horários de um dia, com status
 //   GET    /api/horarios/disponiveis?data=...  -> só os horários livres de um dia
-//   GET    /api/agendamentos           -> todos os agendamentos de todas as datas
 //   POST   /api/agendamentos           -> cria um agendamento (corpo em JSON)
+//
+//   Do barbeiro (exigem usuário e senha, veja autenticacao.js):
+//   GET    /api/horarios?data=...      -> todos os horários de um dia, com os nomes
+//   GET    /api/agendamentos           -> todos os agendamentos de todas as datas
 //   DELETE /api/agendamentos?data=...&horario=...  -> cancela um agendamento
 //
+// Regras de prazo para o cliente (veja tempo.js): não agenda no passado, não
+// agenda horário de hoje que já passou e não agenda além de 60 dias.
+//
 // Códigos de status usados:
-//   200 OK | 201 Criado | 400 Dados inválidos | 404 Não encontrado
-//   405 Método não permitido | 409 Conflito (horário ocupado)
-//   413 Corpo muito grande | 500 Erro interno
+//   200 OK | 201 Criado | 400 Dados inválidos | 401 Login necessário
+//   404 Não encontrado | 405 Método não permitido
+//   409 Conflito (horário ocupado ou que já passou)
+//   413 Corpo muito grande | 429 Tentativas demais | 500 Erro interno
+//   503 Área do barbeiro desativada (senha não configurada)
 
 const http = require("http");
 
 const { salvarAgenda } = require("./armazenamento");
 const { servirArquivoEstatico } = require("./estaticos");
+const { criarAutenticador } = require("./autenticacao");
+const {
+  obterAgoraLocal,
+  verificarPrazo,
+  filtrarHorariosAgendaveis,
+} = require("./tempo");
 const {
   validarData,
   validarFormatoHorario,
@@ -141,6 +155,25 @@ function obterDiaSemCriar(agenda, data) {
   return agenda[data] || obterHorariosDoDia({}, data);
 }
 
+// Envolve uma rota para que só o barbeiro (com senha) consiga usá-la.
+// Se o login falhar, responde 401/429/503 e a rota original nem é executada.
+function apenasBarbeiro(funcaoDaRota) {
+  return async (contexto) => {
+    const resultado = contexto.autenticador.verificar(contexto.req);
+
+    if (!resultado.permitido) {
+      return responder(
+        contexto.res,
+        resultado.status,
+        { erro: resultado.mensagem },
+        resultado.cabecalhos
+      );
+    }
+
+    return funcaoDaRota(contexto);
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Tratamento de cada rota
 // ---------------------------------------------------------------------------
@@ -149,11 +182,11 @@ function tratarInicio({ res }) {
   responder(res, 200, {
     mensagem: "API da agenda da barbearia",
     rotas: [
-      "GET /api/horarios?data=26/09/2026",
       "GET /api/horarios/disponiveis?data=26/09/2026",
-      "GET /api/agendamentos",
       'POST /api/agendamentos  (corpo JSON: {"data","horario","cliente"})',
-      "DELETE /api/agendamentos?data=26/09/2026&horario=09:00",
+      "GET /api/horarios?data=26/09/2026  (barbeiro: exige senha)",
+      "GET /api/agendamentos  (barbeiro: exige senha)",
+      "DELETE /api/agendamentos?data=26/09/2026&horario=09:00  (barbeiro: exige senha)",
     ],
   });
 }
@@ -169,14 +202,23 @@ function tratarHorarios({ res, url, agenda }) {
 }
 
 // GET /horarios/disponiveis?data=... -> só os horários livres
-function tratarHorariosDisponiveis({ res, url, agenda }) {
+function tratarHorariosDisponiveis({ res, url, agenda, obterAgora }) {
   const data = lerDataDaUrl(url);
   if (data === null) {
     return responder(res, 400, { erro: MENSAGEM_DATA_INVALIDA });
   }
 
-  const livres = obterHorariosDisponiveis(obterDiaSemCriar(agenda, data));
-  responder(res, 200, { data, horarios: livres.map((item) => item.horario) });
+  const livres = obterHorariosDisponiveis(obterDiaSemCriar(agenda, data)).map(
+    (item) => item.horario
+  );
+
+  // Tira os horários que já passaram (dias passados, horas de hoje) e os
+  // de datas distantes demais. Quem decide é o servidor, com o fuso de São Paulo.
+  const agoraLocal = obterAgoraLocal(obterAgora());
+  responder(res, 200, {
+    data,
+    horarios: filtrarHorariosAgendaveis(data, livres, agoraLocal),
+  });
 }
 
 // GET /agendamentos -> todos os agendamentos
@@ -185,7 +227,7 @@ function tratarListarAgendamentos({ res, agenda }) {
 }
 
 // POST /agendamentos -> cria um agendamento
-async function tratarAgendar({ req, res, agenda }) {
+async function tratarAgendar({ req, res, agenda, obterAgora }) {
   const corpo = await lerCorpoJson(req);
 
   const data = typeof corpo.data === "string" ? corpo.data.trim() : "";
@@ -223,6 +265,17 @@ async function tratarAgendar({ req, res, agenda }) {
     return responder(res, 400, {
       erro: `O horário ${horario} não existe na agenda.`,
     });
+  }
+
+  // Confere o prazo ANTES de criar o dia na agenda: pedidos para o passado
+  // ou para datas distantes demais não deixam nada gravado.
+  const prazo = verificarPrazo(data, horario, obterAgoraLocal(obterAgora()));
+
+  if (!prazo.permitido) {
+    // Horário de hoje que passou é um conflito com o estado atual (409);
+    // data passada ou distante demais é um dado inválido (400).
+    const status = prazo.motivo === "horario_passou" ? 409 : 400;
+    return responder(res, status, { erro: prazo.mensagem });
   }
 
   const horariosDoDia = obterHorariosDoDia(agenda, data);
@@ -307,19 +360,20 @@ function tratarCancelar({ res, url, agenda }) {
 // ---------------------------------------------------------------------------
 
 // Para cada caminho, quais métodos HTTP são aceitos e qual função trata cada um
+// As rotas envolvidas por apenasBarbeiro(...) exigem usuário e senha.
 const rotas = {
   "/": { GET: tratarInicio },
-  "/horarios": { GET: tratarHorarios },
+  "/horarios": { GET: apenasBarbeiro(tratarHorarios) },
   "/horarios/disponiveis": { GET: tratarHorariosDisponiveis },
   "/agendamentos": {
-    GET: tratarListarAgendamentos,
+    GET: apenasBarbeiro(tratarListarAgendamentos),
     POST: tratarAgendar,
-    DELETE: tratarCancelar,
+    DELETE: apenasBarbeiro(tratarCancelar),
   },
 };
 
 // Descobre quem deve tratar a requisição (a API ou a página) e a executa
-async function tratarRequisicao(req, res, agenda) {
+async function tratarRequisicao(req, res, agenda, configuracao) {
   let url;
   try {
     url = new URL(req.url, "http://localhost");
@@ -367,13 +421,24 @@ async function tratarRequisicao(req, res, agenda) {
     );
   }
 
-  await funcaoDaRota({ req, res, url, agenda });
+  await funcaoDaRota({ req, res, url, agenda, ...configuracao });
 }
 
-// Cria o servidor HTTP (ainda sem "ligar" em nenhuma porta)
-function criarServidor(agenda) {
-  return http.createServer((req, res) => {
-    tratarRequisicao(req, res, agenda).catch((erro) => {
+// Cria o servidor HTTP (ainda sem "ligar" em nenhuma porta).
+// Opções (todas facultativas):
+//   senhaBarbeiro: senha da área do barbeiro (sem ela, a área fica desligada)
+//   obterAgora:    função que devolve a data/hora atual (os testes usam para
+//                  "viajar no tempo"; normalmente é o relógio de verdade)
+function criarServidor(agenda, opcoes = {}) {
+  const { senhaBarbeiro, obterAgora = () => new Date() } = opcoes;
+
+  const configuracao = {
+    obterAgora,
+    autenticador: criarAutenticador(senhaBarbeiro, () => obterAgora().getTime()),
+  };
+
+  const servidor = http.createServer((req, res) => {
+    tratarRequisicao(req, res, agenda, configuracao).catch((erro) => {
       if (res.headersSent) {
         res.end();
         return;
@@ -387,6 +452,10 @@ function criarServidor(agenda) {
       responder(res, 500, { erro: "Erro interno do servidor." });
     });
   });
+
+  // Permite ao servidor.js saber se a área do barbeiro está ligada
+  servidor.areaDoBarbeiroAtiva = configuracao.autenticador.ativo;
+  return servidor;
 }
 
 module.exports = { criarServidor };
