@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Agenda do barbeiro</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/barbeiro.css">
+</head>
+<body>
+  <!-- Faixa decorativa inspirada no poste de barbeiro (a mesma da página do cliente) -->
+  <div class="faixa" aria-hidden="true"></div>
+
+  <main class="painel">
+    <header class="cabecalho">
+      <h1>Agenda do barbeiro</h1>
+      <button id="botao-atualizar" type="button" class="botao botao-secundario">Atualizar</button>
+    </header>
+
+    <noscript>
+      <p class="aviso aviso-erro">Ative o JavaScript no navegador para usar o painel.</p>
+    </noscript>
+
+    <!-- Navegação entre os dias -->
+    <nav class="navegacao" aria-label="Navegar entre os dias">
+      <button id="botao-anterior" type="button" class="botao botao-secundario" aria-label="Dia anterior"><span aria-hidden="true">‹</span> Anterior</button>
+      <button id="botao-hoje" type="button" class="botao botao-secundario">Hoje</button>
+      <button id="botao-proximo" type="button" class="botao botao-secundario" aria-label="Próximo dia">Próximo <span aria-hidden="true">›</span></button>
+    </nav>
+
+    <!-- O dia escolhido -->
+    <section class="dia" aria-labelledby="titulo-dia">
+      <div class="dia-topo">
+        <h2 id="titulo-dia" class="titulo-dia"><span id="texto-dia"></span> <span id="selo-hoje" class="selo" hidden>Hoje</span></h2>
+        <div class="ir-para">
+          <label for="campo-data">Ir para a data</label>
+          <input id="campo-data" type="date" min="2000-01-01" max="2099-12-31">
+        </div>
+      </div>
+
+      <!-- Resumo do dia (também serve de aviso de "carregando") -->
+      <p id="resumo-dia" class="resumo" role="status"></p>
+
+      <!-- Mensagem de sucesso ou informação (ex: agendamento cancelado) -->
+      <p id="mensagem" class="aviso aviso-sucesso" role="status"></p>
+
+      <!-- Erros de conexão, de login, de bloqueio etc. -->
+      <div id="aviso" class="aviso aviso-erro" role="alert" hidden>
+        <p id="aviso-texto"></p>
+        <button id="aviso-acao" type="button" class="botao botao-secundario"></button>
+      </div>
+
+      <ol id="lista-horarios" class="horarios" aria-label="Horários do dia"></ol>
+
+      <p id="legenda" class="legenda" hidden>
+        Encerrado: horário que não aceita mais agendamentos de clientes (já passou ou está além do prazo).
+      </p>
+    </section>
+  </main>
+
+  <!-- Confirmação antes de cancelar um agendamento -->
+  <dialog id="dialogo-cancelar" class="dialogo" aria-labelledby="dialogo-titulo" aria-describedby="dialogo-texto">
+    <div class="dialogo-corpo">
+      <h2 id="dialogo-titulo">Cancelar agendamento?</h2>
+      <p id="dialogo-texto"></p>
+      <p class="texto-suave">O horário ficará livre para novos agendamentos.</p>
+      <p id="dialogo-erro" class="aviso aviso-erro" role="alert" hidden></p>
+      <div class="dialogo-acoes">
+        <button id="dialogo-manter" type="button" class="botao botao-secundario" autofocus>Manter agendamento</button>
+        <button id="dialogo-confirmar" type="button" class="botao botao-perigo">Cancelar agendamento</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/barbeiro.js" defer></script>
+</body>
+</html>

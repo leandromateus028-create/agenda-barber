@@ -2,6 +2,7 @@
 // O servidor web da agenda. Recebe requisições HTTP e decide:
 //   - endereços que começam com /api  -> responde em JSON (a API da agenda)
 //   - qualquer outro endereço         -> entrega a página do site (pasta public)
+//     (a página do barbeiro, barbeiro.html, exige usuário e senha)
 //
 // A API usa as MESMAS regras do terminal (regrasAgenda.js, validacoes.js e
 // armazenamento.js). Aqui só existe a "tradução" entre HTTP e essas regras.
@@ -58,6 +59,9 @@ const TAMANHO_MAXIMO_NOME = 100; // caracteres
 
 // Todos os endereços da API começam com este prefixo
 const PREFIXO_API = "/api";
+
+// Arquivos da pasta public que exigem login (caminho relativo, em minúsculas)
+const ARQUIVOS_DO_BARBEIRO = ["barbeiro.html"];
 
 const MENSAGEM_DATA_INVALIDA =
   "Data inválida. Informe uma data válida no formato DD/MM/AAAA " +
@@ -153,6 +157,20 @@ function lerDataDaUrl(url) {
 // não suja o agenda.json com dias vazios.
 function obterDiaSemCriar(agenda, data) {
   return agenda[data] || obterHorariosDoDia({}, data);
+}
+
+// Cria a regra que o servidor de arquivos usa para saber se um arquivo da
+// pasta public exige login. Usa o MESMO verificador (e o mesmo limite de
+// tentativas) das rotas protegidas da API.
+function criarVerificadorDeArquivos(autenticador) {
+  return (caminhoDoArquivo, req) => {
+    if (!ARQUIVOS_DO_BARBEIRO.includes(caminhoDoArquivo)) {
+      return { permitido: true };
+    }
+
+    const resultado = autenticador.verificar(req);
+    return resultado.permitido ? { permitido: true, protegido: true } : resultado;
+  };
 }
 
 // Envolve uma rota para que só o barbeiro (com senha) consiga usá-la.
@@ -388,7 +406,17 @@ async function tratarRequisicao(req, res, agenda, configuracao) {
     caminho === PREFIXO_API || caminho.startsWith(PREFIXO_API + "/");
 
   if (!ehRotaDaApi) {
-    return servirArquivoEstatico(req, res, caminho);
+    // Atalho: /barbeiro abre a página do barbeiro
+    if (caminho === "/barbeiro") {
+      caminho = "/barbeiro.html";
+    }
+
+    return servirArquivoEstatico(
+      req,
+      res,
+      caminho,
+      configuracao.verificarAcessoAoArquivo
+    );
   }
 
   // Tira o prefixo: "/api/agendamentos" vira "/agendamentos" na tabela de rotas
@@ -432,9 +460,12 @@ async function tratarRequisicao(req, res, agenda, configuracao) {
 function criarServidor(agenda, opcoes = {}) {
   const { senhaBarbeiro, obterAgora = () => new Date() } = opcoes;
 
+  const autenticador = criarAutenticador(senhaBarbeiro, () => obterAgora().getTime());
+
   const configuracao = {
     obterAgora,
-    autenticador: criarAutenticador(senhaBarbeiro, () => obterAgora().getTime()),
+    autenticador,
+    verificarAcessoAoArquivo: criarVerificadorDeArquivos(autenticador),
   };
 
   const servidor = http.createServer((req, res) => {

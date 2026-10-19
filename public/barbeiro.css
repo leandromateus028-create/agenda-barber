@@ -1,0 +1,444 @@
+/* public/barbeiro.css
+   Aparência do painel do barbeiro.
+   Mesma identidade da página do cliente (azulejo claro, azul-marinho e a faixa
+   do poste de barbeiro), mas pensada para consultar a agenda rapidamente:
+   uma linha por horário, como numa agenda de papel. As cores abaixo repetem
+   as de estilo.css de propósito, para este arquivo funcionar sozinho. */
+
+/* ---------- Cores e medidas ---------- */
+:root {
+  --fundo: #edf0f3;
+  --superficie: #ffffff;
+  --tinta: #17212d;
+  --tinta-suave: #455261;
+  --linha: #c5cdd6;            /* divisórias discretas */
+  --borda-controle: #6f7c8a;   /* bordas de botões e campos (contraste 3:1) */
+  --destaque: #16324f;         /* agendamento ocupado, botões principais */
+  --sobre-destaque: #ffffff;
+  --foco: #1f5fae;
+  --erro: #a3211f;
+  --erro-fundo: #fbeaea;
+  --perigo: #a3211f;           /* botão de cancelar agendamento */
+  --sobre-perigo: #ffffff;
+  --sucesso: #1b5e3b;
+  --sucesso-fundo: #e4f2ea;
+  --poste-vermelho: #b3282d;
+  --poste-azul: #1f4e8c;
+  --poste-branco: #ffffff;
+
+  --raio: 0.5rem;
+  --fonte: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #0f161e;
+    --superficie: #17202b;
+    --tinta: #e9eef3;
+    --tinta-suave: #a9b6c3;
+    --linha: #2e3a48;
+    --borda-controle: #7d8b99;
+    --destaque: #e9eef3;
+    --sobre-destaque: #0f161e;
+    --foco: #8cc2ff;
+    --erro: #ff9b97;
+    --erro-fundo: #3a1b1d;
+    --perigo: #ff9b97;
+    --sobre-perigo: #0f161e;
+    --sucesso: #9fe0b8;
+    --sucesso-fundo: #14281d;
+  }
+}
+
+/* ---------- Base ---------- */
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--tinta);
+  font-family: var(--fonte);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+.texto-suave {
+  color: var(--tinta-suave);
+}
+
+/* Faixa do poste de barbeiro */
+.faixa {
+  height: 0.5rem;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--poste-vermelho) 0 0.75rem,
+    var(--poste-branco) 0.75rem 1.5rem,
+    var(--poste-azul) 1.5rem 2.25rem,
+    var(--poste-branco) 2.25rem 3rem
+  );
+}
+
+.painel {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 4rem;
+}
+
+/* ---------- Cabeçalho e navegação ---------- */
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+h1 {
+  font-size: clamp(1.6rem, 6vw, 2.1rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.navegacao {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+/* Em telas estreitas os três botões precisam caber lado a lado */
+.navegacao .botao {
+  padding-inline: 0.5rem;
+  white-space: nowrap;
+}
+
+/* ---------- Botões ---------- */
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  padding: 0.4rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  color: var(--sobre-destaque);
+  background: var(--destaque);
+  border: 1px solid var(--destaque);
+  border-radius: var(--raio);
+  cursor: pointer;
+}
+
+.botao-secundario {
+  color: var(--tinta);
+  background: var(--superficie);
+  border-color: var(--borda-controle);
+}
+
+.botao-perigo {
+  color: var(--sobre-perigo);
+  background: var(--perigo);
+  border-color: var(--perigo);
+}
+
+.botao:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+@media (hover: hover) {
+  .botao-secundario:not(:disabled):hover {
+    border-color: var(--destaque);
+  }
+}
+
+/* Foco visível para quem usa o teclado */
+button:focus-visible,
+input:focus-visible,
+a:focus-visible,
+.linha:focus-visible {
+  outline: 3px solid var(--foco);
+  outline-offset: 2px;
+}
+
+/* ---------- O dia ---------- */
+.dia-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--linha);
+}
+
+.titulo-dia {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+/* Começa o dia com maiúscula ("Quarta-feira..."). O ::first-letter precisa ficar
+   no título (bloco); em um <span> (em linha) ele não funciona. */
+.titulo-dia::first-letter {
+  text-transform: uppercase;
+}
+
+.selo {
+  display: inline-block;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.5;
+  vertical-align: middle;
+  color: var(--sobre-destaque);
+  background: var(--destaque);
+  border-radius: 0.35rem;
+}
+
+.ir-para {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ir-para label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tinta-suave);
+}
+
+input[type="date"] {
+  min-height: 2.75rem;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  color: var(--tinta);
+  background: var(--superficie);
+  border: 1px solid var(--borda-controle);
+  border-radius: var(--raio);
+}
+
+.resumo {
+  margin: 0.75rem 0;
+  font-weight: 600;
+}
+
+/* ---------- Avisos e mensagens ---------- */
+.aviso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: var(--raio);
+}
+
+.aviso-erro {
+  color: var(--erro);
+  background: var(--erro-fundo);
+}
+
+.aviso-sucesso {
+  color: var(--sucesso);
+  background: var(--sucesso-fundo);
+}
+
+/* A região de mensagens fica no HTML o tempo todo (para leitores de tela),
+   mas só aparece quando tem texto. */
+.aviso-sucesso:empty {
+  display: none;
+}
+
+/* ---------- Lista de horários ---------- */
+.horarios {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--linha);
+}
+
+.linha {
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.75rem;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--linha);
+}
+
+.hora {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.detalhe {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.principal {
+  overflow-wrap: anywhere;
+}
+
+.situacao {
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+}
+
+/* Ocupado: fundo branco e barra azul à esquerda, nome em destaque */
+.linha[data-situacao="ocupado"] {
+  padding-left: 0.75rem;
+  background: var(--superficie);
+  border-left: 4px solid var(--destaque);
+}
+
+.linha[data-situacao="ocupado"] .principal {
+  font-weight: 700;
+}
+
+/* Livre e encerrado: mais discretos */
+.linha[data-situacao="livre"] .principal,
+.linha[data-situacao="encerrado"] .principal {
+  color: var(--tinta-suave);
+}
+
+.linha[data-situacao="livre"] .hora,
+.linha[data-situacao="encerrado"] .hora {
+  font-weight: 600;
+}
+
+.botao-cancelar {
+  color: var(--erro);
+  background: var(--superficie);
+  border-color: var(--erro);
+}
+
+.legenda {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--tinta-suave);
+}
+
+/* ---------- Diálogo de confirmação ---------- */
+.dialogo {
+  width: min(33rem, calc(100% - 2rem));
+  padding: 0;
+  color: var(--tinta);
+  background: var(--superficie);
+  border: 1px solid var(--borda-controle);
+  border-radius: var(--raio);
+}
+
+.dialogo::backdrop {
+  background: rgb(15 22 30 / 0.65);
+}
+
+.dialogo-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 1rem 1rem;
+}
+
+.dialogo h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.dialogo-acoes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.dialogo .aviso {
+  margin: 0;
+}
+
+.dialogo .botao {
+  white-space: nowrap;
+}
+
+/* ---------- Página de acesso negado (aparece se o login for cancelado) ---------- */
+.acesso-restrito {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-top: 3rem;
+}
+
+/* ---------- Telas muito estreitas (até 380 px) ---------- */
+@media (max-width: 23.75rem) {
+  .linha {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+    row-gap: 0.5rem;
+  }
+
+  .hora {
+    font-size: 1.125rem;
+  }
+
+  /* O botão ocupa a segunda coluna, embaixo do nome */
+  .linha .botao-cancelar {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+/* ---------- Telas maiores ---------- */
+@media (min-width: 40rem) {
+  .painel {
+    padding-top: 2.5rem;
+  }
+
+  .navegacao {
+    grid-template-columns: 9rem 6rem 9rem;
+    justify-content: start;
+  }
+
+  .linha {
+    grid-template-columns: 5rem minmax(0, 1fr) auto;
+    padding-left: 0.5rem;
+  }
+
+  .linha[data-situacao="ocupado"] {
+    padding-left: 0.75rem;
+  }
+
+  .dialogo-acoes {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}
+
+/* ---------- Movimento reduzido ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .botao {
+    transition: background-color 120ms, border-color 120ms, color 120ms;
+  }
+}
