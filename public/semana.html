@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Resumo da semana</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/barbeiro.css">
+  <link rel="stylesheet" href="/semana.css">
+</head>
+<body>
+  <!-- Faixa decorativa inspirada no poste de barbeiro (a mesma das outras páginas) -->
+  <div class="faixa" aria-hidden="true"></div>
+
+  <main class="painel">
+    <header class="cabecalho">
+      <h1>Resumo da semana</h1>
+      <div class="acoes">
+        <a id="link-dia" class="botao botao-secundario" href="/barbeiro">Agenda do dia</a>
+        <button id="botao-atualizar" type="button" class="botao botao-secundario">Atualizar</button>
+      </div>
+    </header>
+
+    <noscript>
+      <p class="aviso aviso-erro">Ative o JavaScript no navegador para usar o painel.</p>
+    </noscript>
+
+    <!-- Navegação entre as semanas -->
+    <nav class="navegacao" aria-label="Navegar entre as semanas">
+      <button id="botao-anterior" type="button" class="botao botao-secundario" aria-label="Semana anterior"><span aria-hidden="true">‹</span> Anterior</button>
+      <button id="botao-hoje" type="button" class="botao botao-secundario" aria-label="Voltar para esta semana">Hoje</button>
+      <button id="botao-proxima" type="button" class="botao botao-secundario" aria-label="Próxima semana">Próxima <span aria-hidden="true">›</span></button>
+    </nav>
+
+    <!-- A semana escolhida -->
+    <section class="dia" aria-labelledby="titulo-semana">
+      <div class="dia-topo">
+        <h2 id="titulo-semana" class="titulo-dia"><span id="texto-semana"></span> <span id="selo-semana" class="selo" hidden>Esta semana</span></h2>
+      </div>
+
+      <!-- Total da semana (também serve de aviso de "carregando") -->
+      <p id="resumo-semana" class="resumo" role="status"></p>
+
+      <!-- Erros de conexão, de login, de bloqueio etc. -->
+      <div id="aviso" class="aviso aviso-erro" role="alert" hidden>
+        <p id="aviso-texto"></p>
+        <button id="aviso-acao" type="button" class="botao botao-secundario"></button>
+      </div>
+
+      <ol id="lista-dias" class="semana" aria-label="Dias da semana"></ol>
+
+      <p class="legenda">Toque em um dia para abrir a agenda dele.</p>
+    </section>
+  </main>
+
+  <script src="/semana.js" defer></script>
+</body>
+</html>

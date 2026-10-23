@@ -1,0 +1,118 @@
+/* public/semana.css
+   Só o que é específico da página de resumo da semana.
+   Cores, botões, avisos, cabeçalho e foco vêm de barbeiro.css (carregado antes
+   deste arquivo), para as duas páginas do barbeiro ficarem iguais. */
+
+/* ---------- Lista dos 7 dias ---------- */
+.semana {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--linha);
+}
+
+.semana li {
+  border-bottom: 1px solid var(--linha);
+}
+
+/* Cada dia é um link para a agenda daquele dia */
+.dia-link {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 4.5rem;
+  /* Todas as linhas têm a mesma faixa à esquerda (transparente nas vazias),
+     para as datas ficarem alinhadas em coluna */
+  padding: 0.5rem 0.25rem 0.5rem 0.75rem;
+  color: inherit;
+  text-decoration: none;
+  border-left: 4px solid transparent;
+}
+
+/* Dia com agendamentos: fundo branco e barra azul à esquerda
+   (a mesma linguagem das linhas ocupadas da agenda do dia) */
+.dia-link[data-movimento="sim"] {
+  background: var(--superficie);
+  border-left-color: var(--destaque);
+}
+
+@media (hover: hover) {
+  .dia-link:hover {
+    background: var(--superficie);
+  }
+}
+
+/* ---------- Data (dia da semana, número e mês) ---------- */
+.data-bloco {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+}
+
+.data-semana,
+.data-mes {
+  font-size: 0.75rem;
+  color: var(--tinta-suave);
+}
+
+.data-numero {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Quantidade e marcas ---------- */
+.conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.linha-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+
+.quantidade {
+  font-weight: 700;
+}
+
+/* Dia sem agendamentos: mais discreto */
+.dia-link[data-movimento="nao"] .quantidade {
+  font-weight: 400;
+  color: var(--tinta-suave);
+}
+
+/* Uma marca para cada agendamento: dá para ver onde há movimento num relance.
+   São só enfeite (o número está escrito ao lado), por isso ficam escondidas
+   de leitores de tela. */
+.marcas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.marca {
+  width: 0.75rem;
+  height: 1.1rem;
+  background: var(--destaque);
+  border-radius: 0.15rem;
+}
+
+.marcas-mais {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--tinta-suave);
+}
+
+.seta {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--tinta-suave);
+}

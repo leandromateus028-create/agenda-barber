@@ -38,6 +38,7 @@ const MESES_LONGO = [
 // Elementos da página (buscados uma vez só)
 // ---------------------------------------------------------------------------
 
+const linkSemana = document.getElementById("link-semana");
 const botaoAtualizar = document.getElementById("botao-atualizar");
 const botaoAnterior = document.getElementById("botao-anterior");
 const botaoHoje = document.getElementById("botao-hoje");
@@ -63,7 +64,7 @@ const dialogoConfirmar = document.getElementById("dialogo-confirmar");
 // ---------------------------------------------------------------------------
 
 const estado = {
-  data: inicioDoDia(new Date()), // dia mostrado (data local, à meia-noite)
+  data: dataInicial(), // dia mostrado (data local, à meia-noite)
   linhasBase: [], // horários do servidor: { horario, cliente, disponivel }
   agendaveis: null, // Set com os horários que clientes ainda podem agendar (ou null)
   linhas: [], // linhasBase + situação: "ocupado", "livre" ou "encerrado"
@@ -100,6 +101,33 @@ function mesmoDia(a, b) {
 
 function dentroDoIntervalo(data) {
   return data.getFullYear() >= ANO_MINIMO && data.getFullYear() <= ANO_MAXIMO;
+}
+
+// Converte "AAAA-MM-DD" em data local. Devolve null se o texto estiver mal
+// formado, se a data não existir ou se estiver fora do intervalo aceito.
+function lerDataIso(texto) {
+  const correspondencia = String(texto || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!correspondencia) {
+    return null;
+  }
+
+  const [, ano, mes, dia] = correspondencia.map(Number);
+  const data = new Date(ano, mes - 1, dia);
+
+  // Descarta datas que não existem (o JavaScript "corrigiria" 31/02 para março)
+  if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
+    return null;
+  }
+
+  return dentroDoIntervalo(data) ? data : null;
+}
+
+// O dia que o painel mostra ao abrir: o do endereço (?data=AAAA-MM-DD, usado
+// pelo resumo da semana) ou, sem ele, hoje
+function dataInicial() {
+  const doEndereco = lerDataIso(new URLSearchParams(window.location.search).get("data"));
+  return doEndereco || inicioDoDia(new Date());
 }
 
 // "DD/MM/AAAA": o formato que a API entende
@@ -368,11 +396,26 @@ function aplicarAgenda(linhasBase, agendaveis) {
   }
 }
 
-// Título, selo "Hoje" e campo de data
+// Título, selo "Hoje", campo de data, endereço da página e link da semana
 function atualizarCabecalhoDoDia() {
+  const ehHoje = mesmoDia(estado.data, new Date());
+
   textoDia.textContent = descreverData(estado.data);
-  seloHoje.hidden = !mesmoDia(estado.data, new Date());
+  seloHoje.hidden = !ehHoje;
   campoData.value = formatarDataCampo(estado.data);
+
+  // Mantém o dia no endereço, para o botão "voltar" e o recarregar da página
+  // continuarem no mesmo dia (em "hoje", o endereço fica limpo)
+  const endereco = new URL(window.location.href);
+  if (ehHoje) {
+    endereco.searchParams.delete("data");
+  } else {
+    endereco.searchParams.set("data", formatarDataCampo(estado.data));
+  }
+  window.history.replaceState(null, "", endereco.pathname + endereco.search + endereco.hash);
+
+  // O resumo da semana abre na semana do dia que está na tela
+  linkSemana.href = ehHoje ? "/semana" : `/semana?data=${formatarDataCampo(estado.data)}`;
 }
 
 function mostrarMensagem(texto) {
@@ -497,21 +540,13 @@ function irParaData(novaData) {
 }
 
 function aoMudarCampoData() {
-  const correspondencia = campoData.value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  // Campo apagado, incompleto, com data que não existe ou fora do intervalo:
+  // ignora (lerDataIso devolve null)
+  const data = lerDataIso(campoData.value);
 
-  if (!correspondencia) {
-    return; // campo apagado ou incompleto: ignora
+  if (data) {
+    irParaData(data);
   }
-
-  const [, ano, mes, dia] = correspondencia.map(Number);
-  const data = new Date(ano, mes - 1, dia);
-
-  // Descarta datas que não existem (o JavaScript "corrigiria" 31/02 para março)
-  if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
-    return;
-  }
-
-  irParaData(data);
 }
 
 // ---------------------------------------------------------------------------

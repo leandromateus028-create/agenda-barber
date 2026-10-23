@@ -99,10 +99,22 @@ p {
 /* ---------- Cabeçalho e navegação ---------- */
 .cabecalho {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem 1rem;
   margin-bottom: 1rem;
+}
+
+/* O título cede espaço (quebrando em duas linhas) antes de os botões irem
+   para a linha de baixo */
+.cabecalho h1 {
+  flex: 1 1 8rem;
+}
+
+.acoes {
+  display: flex;
+  gap: 0.5rem;
 }
 
 h1 {
@@ -282,8 +294,11 @@ input[type="date"] {
   align-items: center;
   gap: 0.75rem;
   min-height: 3.75rem;
-  padding: 0.5rem 0.25rem;
+  /* Todas as linhas têm a mesma faixa à esquerda (transparente nas livres),
+     para os horários ficarem alinhados em coluna */
+  padding: 0.5rem 0.25rem 0.5rem 0.75rem;
   border-bottom: 1px solid var(--linha);
+  border-left: 4px solid transparent;
 }
 
 .hora {
@@ -309,9 +324,8 @@ input[type="date"] {
 
 /* Ocupado: fundo branco e barra azul à esquerda, nome em destaque */
 .linha[data-situacao="ocupado"] {
-  padding-left: 0.75rem;
   background: var(--superficie);
-  border-left: 4px solid var(--destaque);
+  border-left-color: var(--destaque);
 }
 
 .linha[data-situacao="ocupado"] .principal {
@@ -423,11 +437,6 @@ input[type="date"] {
 
   .linha {
     grid-template-columns: 5rem minmax(0, 1fr) auto;
-    padding-left: 0.5rem;
-  }
-
-  .linha[data-situacao="ocupado"] {
-    padding-left: 0.75rem;
   }
 
   .dialogo-acoes {

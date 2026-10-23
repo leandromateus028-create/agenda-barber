@@ -2,7 +2,7 @@
 // O servidor web da agenda. Recebe requisições HTTP e decide:
 //   - endereços que começam com /api  -> responde em JSON (a API da agenda)
 //   - qualquer outro endereço         -> entrega a página do site (pasta public)
-//     (a página do barbeiro, barbeiro.html, exige usuário e senha)
+//     (as páginas do barbeiro, barbeiro.html e semana.html, exigem usuário e senha)
 //
 // A API usa as MESMAS regras do terminal (regrasAgenda.js, validacoes.js e
 // armazenamento.js). Aqui só existe a "tradução" entre HTTP e essas regras.
@@ -61,7 +61,13 @@ const TAMANHO_MAXIMO_NOME = 100; // caracteres
 const PREFIXO_API = "/api";
 
 // Arquivos da pasta public que exigem login (caminho relativo, em minúsculas)
-const ARQUIVOS_DO_BARBEIRO = ["barbeiro.html"];
+const ARQUIVOS_DO_BARBEIRO = ["barbeiro.html", "semana.html"];
+
+// Atalhos de endereço para as páginas do barbeiro
+const ATALHOS_DAS_PAGINAS = {
+  "/barbeiro": "/barbeiro.html",
+  "/semana": "/semana.html",
+};
 
 const MENSAGEM_DATA_INVALIDA =
   "Data inválida. Informe uma data válida no formato DD/MM/AAAA " +
@@ -406,9 +412,9 @@ async function tratarRequisicao(req, res, agenda, configuracao) {
     caminho === PREFIXO_API || caminho.startsWith(PREFIXO_API + "/");
 
   if (!ehRotaDaApi) {
-    // Atalho: /barbeiro abre a página do barbeiro
-    if (caminho === "/barbeiro") {
-      caminho = "/barbeiro.html";
+    // Atalhos: /barbeiro abre a agenda do dia e /semana abre o resumo da semana
+    if (Object.hasOwn(ATALHOS_DAS_PAGINAS, caminho)) {
+      caminho = ATALHOS_DAS_PAGINAS[caminho];
     }
 
     return servirArquivoEstatico(
